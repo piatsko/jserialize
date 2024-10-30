@@ -10,6 +10,6 @@ $ cmake --build build
 ```
 # Run example
 ```
-$ ./build/example
+$ ./build/serialize
 {"i32":483,"f64":0.007000,"f32":0.453000,"vec":[1,2,3],"str":"abc","s":{"a":5,"b":6},"e":{},"opt1":"null","opt2":{"a":7,"b":8}}
 ```
