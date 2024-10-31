@@ -12,12 +12,14 @@ struct test_struct {
     int i32; double f64; float f32;
     std::array<int, 3> vec;
     const char* str;
+    std::string string;
     simple s;
     empty e;
     std::optional<simple> opt1;
     std::optional<simple> opt2;
 };
 
+std::string global_str{"global"};
 
 int main() {
     std::cout << serialize::serialize(
@@ -27,6 +29,7 @@ int main() {
             .f32=.453,
             .vec={1,2,3},
             .str="abc",
+            .string={"string"},
             .s={5,6},
             .e={},
             .opt1={},

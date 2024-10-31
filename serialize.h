@@ -5,32 +5,34 @@
 #include <type_traits>
 #include <ranges>
 #include <optional>
+#include <utility>
 
 namespace {
-    inline std::string drop_last_comma(const std::string& str) {
-        std::size_t last_comma_occurence = str.rfind(',');
-        if (last_comma_occurence != std::string::npos) {
-           return str.substr(0, last_comma_occurence);
+    void drop_last_char(std::stringstream& stream) {
+        if (stream.tellp() > 1) {
+            stream.seekp(-1, std::ios_base::end); 
         }
-        return str;
     }
-    
-    template <typename T>
-    concept sized_forward_range = std::ranges::forward_range<T>
-                                  &&
-                                  std::ranges::sized_range<T>;
-    
-    template <typename T>
-    concept numeric = std::integral<T> || std::floating_point<T>;
-    
+
     template <typename T>
     concept any_string = std::same_as<T, std::string> ||
                          std::same_as<T, std::string_view> ||
                          std::convertible_to<T, std::string>;
  
+    
     template <typename T>
+    concept sized_forward_range = std::ranges::forward_range<T>
+                                  &&
+                                  std::ranges::sized_range<T>
+                                  && (not any_string<T>);
+    
+    template <typename T>
+    concept numeric = std::integral<T> || std::floating_point<T>;
+    
+   template <typename T>
     concept numeric_except_bool = numeric<T> && (not std::same_as<T, bool>);
 }
+
 
 namespace serialize {
 namespace detail {
@@ -39,17 +41,18 @@ namespace detail {
         template <typename U>
         static std::string serialize(U&& obj) {
             std::stringstream serialized_obj;
+            serialized_obj << '{';
             reflect::for_each([&](auto I){
                 auto member_name = reflect::member_name<I, T>();
                 auto& ith_member = reflect::get<I>(obj);
-                serialized_obj << "\"" << member_name << "\""
+                serialized_obj << '\"' << member_name << '\"'
                                << ':'
                                << serializer_impl<std::remove_cvref_t<decltype(ith_member)>>::serialize(ith_member)
                                << ',';
             }, obj);
-            return std::string("{") + 
-                   ::drop_last_comma(serialized_obj.str()) + 
-                   '}'; 
+            ::drop_last_char(serialized_obj);
+            serialized_obj << '}';
+            return serialized_obj.str(); 
         }
     };
 
@@ -58,13 +61,14 @@ namespace detail {
         template <typename U>
         static std::string serialize(U&& range) {
             std::stringstream serialized_range;
+            serialized_range << '[';
             for (auto it = std::ranges::begin(range); it != std::ranges::end(range); ++it) {
-                const auto& value = *it;
+                auto& value = *it;
                 serialized_range << serializer_impl<std::remove_cvref_t<decltype(value)>>::serialize(value) << ',';
             }
-            return std::string("[") +
-                   ::drop_last_comma(serialized_range.str()) + 
-                   ']';
+            ::drop_last_char(serialized_range);
+            serialized_range << ']';
+            return serialized_range.str(); 
         }
     };
     
@@ -72,7 +76,7 @@ namespace detail {
     struct serializer_impl<T> {
         template <typename U>
         static std::string serialize(U&& str) {
-            return "\"" + std::string(str) + "\"";
+            return "\"" + std::string(str) + '\"';
         }
     };
 
@@ -86,8 +90,7 @@ namespace detail {
 
     template<>
     struct serializer_impl<bool> {
-        template <typename U>
-        static std::string serialize(U&& obj) {
+        static std::string serialize(bool obj) {
             return obj ? "true" : "false";
         }
     };
@@ -106,7 +109,7 @@ namespace detail {
 
 template <typename T>
 std::string serialize(T&& obj) {
-    return detail::serializer_impl<std::remove_cvref_t<decltype(obj)>>::serialize(obj);
+    return detail::serializer_impl<std::remove_cvref_t<decltype(obj)>>::serialize(std::forward<T>(obj));
 }
 }
  
