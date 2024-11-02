@@ -38,78 +38,79 @@ namespace serialize {
 namespace detail {
     template <typename T>
     struct serializer_impl {
-        template <typename U>
-        static std::string serialize(U&& obj) {
-            std::stringstream serialized_obj;
-            serialized_obj << '{';
+        template <typename U, typename Stream>
+        static void serialize(U&& obj, Stream& stream) {
+            stream << '{';
             reflect::for_each([&](auto I){
                 auto member_name = reflect::member_name<I, T>();
                 auto& ith_member = reflect::get<I>(obj);
-                serialized_obj << '\"' << member_name << '\"'
-                               << ':'
-                               << serializer_impl<std::remove_cvref_t<decltype(ith_member)>>::serialize(ith_member)
-                               << ',';
+                using member_t = std::remove_cvref_t<decltype(ith_member)>;
+
+                stream << '\"' << member_name << '\"' << ':';
+                serializer_impl<member_t>::serialize(ith_member, stream);
+                stream << ',';
             }, obj);
-            ::drop_last_char(serialized_obj);
-            serialized_obj << '}';
-            return serialized_obj.str(); 
+            ::drop_last_char(stream);
+            stream << '}';
         }
     };
 
     template <sized_forward_range T>
     struct serializer_impl<T> {
-        template <typename U>
-        static std::string serialize(U&& range) {
-            std::stringstream serialized_range;
-            serialized_range << '[';
+        template <typename U, typename Stream>
+        static void serialize(U&& range, Stream& stream) {
+            stream << '[';
             for (auto it = std::ranges::begin(range); it != std::ranges::end(range); ++it) {
-                auto& value = *it;
-                serialized_range << serializer_impl<std::remove_cvref_t<decltype(value)>>::serialize(value) << ',';
+                using value_t = std::remove_cvref_t<decltype(*it)>;
+                serializer_impl<value_t>::serialize(*it, stream);
+                stream << ',';
             }
-            ::drop_last_char(serialized_range);
-            serialized_range << ']';
-            return serialized_range.str(); 
+            ::drop_last_char(stream);
+            stream << ']';
         }
     };
     
     template <any_string T>
     struct serializer_impl<T> {
-        template <typename U>
-        static std::string serialize(U&& str) {
-            return "\"" + std::string(str) + '\"';
+        template <typename U, typename Stream>
+        static void serialize(U&& str, Stream& stream) {
+            stream <<  '\"' << std::string(str) << '\"';
         }
     };
 
     template <numeric_except_bool T>
     struct serializer_impl<T> {
-        template <typename U>
-        static std::string serialize(U&& obj) {
-           return std::to_string(obj); 
+        template <typename U, typename Stream>
+        static void serialize(U&& obj, Stream& stream) {
+           stream << std::to_string(obj); 
         }
     };
 
     template<>
     struct serializer_impl<bool> {
-        static std::string serialize(bool obj) {
-            return obj ? "true" : "false";
+        template <typename Stream>
+        static void serialize(bool obj, Stream& stream) {
+            stream << (obj ? "true" : "false");
         }
     };
 
     template<typename T>
     struct serializer_impl<std::optional<T>> {
-        template <typename U>
-        static std::string serialize(U&& obj) {
+        template <typename U, typename Stream>
+        static void serialize(U&& obj, Stream& stream) {
             if (obj.has_value()) {
-                return serializer_impl<std::remove_cvref_t<decltype(obj.value())>>::serialize(obj.value());
+                serializer_impl<T>::serialize(std::forward<T>(*obj), stream);
             }
-            return "\"null\"";
+            stream << "\"null\"";
         }
     };
 }
 
 template <typename T>
 std::string serialize(T&& obj) {
-    return detail::serializer_impl<std::remove_cvref_t<decltype(obj)>>::serialize(std::forward<T>(obj));
+    std::stringstream stream;
+    detail::serializer_impl<T>::serialize(std::forward<T>(obj), stream);
+    return stream.str();
 }
 }
  
