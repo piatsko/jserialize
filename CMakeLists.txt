@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.11)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_options(-Wall -Wextra -pedantic -pedantic-errors -DNTEST)
 
@@ -20,7 +21,9 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(qlibs.reflect)
 
-add_executable (${PROJECT_NAME} main.cpp serialize.h)
+
+add_executable(${PROJECT_NAME} main.cpp serialize.h)
+# target_compile_definitions(${PROJECT_NAME} PUBLIC DEBUG)
 target_include_directories(${PROJECT_NAME} PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${qlibs.reflect_SOURCE_DIR}
