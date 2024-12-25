@@ -1,5 +1,11 @@
-## Serialize any aggregate type to JSON
+## Serialize and deserialize any aggregate type to JSON
 Implemented using [qlibs.reflect](https://github.com/qlibs/reflect)
+
+## Note
+Actually, not everything can be serialized and deserialized because of limitations of the technique.
+Known issues:
+- Can not serialize if an object contains static array, not wrapped in std::array
+- Can not deserialize if there is `char*` field in an object.
 # Requirements
 - C++20
 # Build
@@ -8,8 +14,4 @@ $ mkdir -p build
 $ cmake -S . -B build/
 $ cmake --build build
 ```
-# Run example
-```
-$ ./build/serialize
-{"i32":483,"f64":0.007000,"f32":0.453000,"vec":[1,2,3],"str":"abc","s":{"a":5,"b":6},"e":{},"opt1":"null","opt2":{"a":7,"b":8}}
-```
+
